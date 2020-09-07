@@ -4,6 +4,8 @@
 
 'use strict';
 
+const semver = require('semver');
+
 module.exports = options => {
   return async function meta(ctx, next) {
     if (options.logging) {
@@ -13,9 +15,12 @@ module.exports = options => {
     // total response time header
     ctx.set('x-readtime', Date.now() - ctx.starttime);
 
-    // try to support Keep-Alive Header
+    // Node.js >=14.8.0 will set Keep-Alive Header, see https://github.com/nodejs/node/pull/34561
+    const shouldPatchKeepAliveHeader = semver.lt(process.version, '14.8.0');
+
+    // try to support Keep-Alive Header when < 14.8.0
     const server = ctx.app.server;
-    if (server && server.keepAliveTimeout && server.keepAliveTimeout >= 1000 && ctx.header.connection !== 'close') {
+    if (shouldPatchKeepAliveHeader && server && server.keepAliveTimeout && server.keepAliveTimeout >= 1000 && ctx.header.connection !== 'close') {
       /**
        * use Math.floor instead of parseInt. More: https://github.com/eggjs/egg/pull/2702
        */
